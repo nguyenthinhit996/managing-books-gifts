@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "aliasPrefix": "@",
+  "components": {
+    "path": "./src/components/ui",
+    "name": "{{kebabCase name}}"
+  },
+  "utils": {
+    "path": "./src/utils/cn.ts",
+    "name": "cn"
+  }
+}
