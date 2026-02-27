@@ -345,9 +345,18 @@ export default function EnrollmentPage() {
               const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
               const storagePath = `${enrollmentId}/${fileName}`
 
+              // Get a server-signed upload URL (bypasses storage RLS)
+              const signRes = await fetch('/api/storage/sign-upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: storagePath }),
+              })
+              if (!signRes.ok) continue
+              const { token } = await signRes.json()
+
               const { error: uploadError } = await supabase.storage
                 .from('enrollment-images')
-                .upload(storagePath, file, { upsert: false })
+                .uploadToSignedUrl(storagePath, token, file)
 
               if (!uploadError) {
                 uploadedPaths.push({
@@ -360,7 +369,7 @@ export default function EnrollmentPage() {
             }
 
             if (uploadedPaths.length > 0) {
-              await supabase.from('enrollment_images').insert(uploadedPaths)
+              await axios.post('/api/enrollment-images', uploadedPaths)
             }
           } catch (imgErr) {
             console.error('Image upload error:', imgErr)

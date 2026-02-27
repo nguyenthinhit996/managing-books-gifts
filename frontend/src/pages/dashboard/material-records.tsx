@@ -219,14 +219,10 @@ export default function MaterialRecordsPage() {
     setLoadingImages(true)
     setViewingImages([])
     try {
-      const { data, error } = await supabase
-        .from('enrollment_images')
-        .select('id, storage_path, file_name')
-        .eq('enrollment_id', enrollmentId)
+      const res = await axios.get(`/api/enrollment-images?enrollment_id=${enrollmentId}`)
+      const rows = res.data.data || []
 
-      if (error) throw error
-
-      const images: EnrollmentImage[] = (data || []).map((img: any) => {
+      const images: EnrollmentImage[] = rows.map((img: any) => {
         const { data: urlData } = supabase.storage
           .from('enrollment-images')
           .getPublicUrl(img.storage_path)
