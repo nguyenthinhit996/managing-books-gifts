@@ -119,7 +119,7 @@ export default function Dashboard() {
                 </div>
               </Card>
 
-              <Card className="p-5 border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
+              {/* <Card className="p-5 border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Đang mượn</p>
@@ -139,7 +139,7 @@ export default function Dashboard() {
                   </div>
                   <AlertCircle className="text-red-400 mt-1 shrink-0" size={28} />
                 </div>
-              </Card>
+              </Card> */}
 
               <Card className="p-5 border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">

@@ -18,7 +18,6 @@ import toast from 'react-hot-toast'
 interface SalesStaff {
   id: string
   full_name: string
-  email: string
   role: string
   is_active: boolean
   created_at: string
@@ -39,7 +38,6 @@ export default function SalesPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [formData, setFormData] = useState({
     full_name: '',
-    email: '',
   })
 
   // Fetch sales staff
@@ -78,7 +76,7 @@ export default function SalesPage() {
       }
 
       setShowDialog(false)
-      setFormData({ full_name: '', email: '' })
+      setFormData({ full_name: '' })
       setEditingId(null)
       fetchStaff()
     } catch (err: any) {
@@ -104,7 +102,6 @@ export default function SalesPage() {
   const handleEdit = (s: SalesStaff) => {
     setFormData({
       full_name: s.full_name,
-      email: s.email,
     })
     setEditingId(s.id)
     setShowDialog(true)
@@ -136,7 +133,7 @@ export default function SalesPage() {
                 onClick={() => {
                   if (!user) { router.push('/login'); return }
                   setEditingId(null)
-                  setFormData({ full_name: '', email: '' })
+                  setFormData({ full_name: '' })
                   setShowDialog(true)
                 }}
               >
@@ -149,7 +146,7 @@ export default function SalesPage() {
           <div className="mb-6">
             <div className="flex-1 relative max-w-md">
               <Input
-                placeholder="Search by name or email..."
+                placeholder="Search by name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10"
@@ -172,7 +169,6 @@ export default function SalesPage() {
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Joined</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
@@ -182,7 +178,6 @@ export default function SalesPage() {
                     {staff.map((s) => (
                       <tr key={s.id} className="border-b border-gray-200 hover:bg-gray-50">
                         <td className="py-3 px-4 text-gray-900 font-medium">{s.full_name}</td>
-                        <td className="py-3 px-4 text-gray-600">{s.email}</td>
                         <td className="py-3 px-4">
                           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                             s.is_active
@@ -245,15 +240,6 @@ export default function SalesPage() {
                     required
                     value={formData.full_name}
                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Email *</Label>
-                  <Input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
                 <div className="flex gap-2 justify-end">

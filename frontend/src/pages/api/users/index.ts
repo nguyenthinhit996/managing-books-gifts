@@ -13,7 +13,7 @@ export default async function handler(
 
       let query = supabase
         .from('users')
-        .select('id, full_name, email, role, is_active, created_at')
+        .select('id, full_name, role, is_active, created_at')
         .order('full_name')
         .range(Number(offset), Number(offset) + Number(limit) - 1)
 
@@ -22,7 +22,7 @@ export default async function handler(
       }
 
       if (search && typeof search === 'string') {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
+        query = query.ilike('full_name', `%${search}%`)
       }
 
       const { data, error } = await query
@@ -41,10 +41,10 @@ export default async function handler(
   // POST: Create new sales staff
   if (req.method === 'POST') {
     try {
-      const { full_name, email, role = 'sales' } = req.body
+      const { full_name, role = 'sales' } = req.body
 
-      if (!full_name || !email) {
-        return apiError(res, 'Name and email are required', 400)
+      if (!full_name) {
+        return apiError(res, 'Name is required', 400)
       }
 
       const { data, error } = await supabase
@@ -52,7 +52,6 @@ export default async function handler(
         .insert([
           {
             full_name,
-            email,
             role,
             is_active: true,
           },
@@ -60,9 +59,6 @@ export default async function handler(
         .select()
 
       if (error) {
-        if (error.message.includes('unique') || error.message.includes('duplicate')) {
-          return apiError(res, 'Email already exists', 400)
-        }
         console.error('User creation error:', error)
         return apiError(res, error.message, 500)
       }

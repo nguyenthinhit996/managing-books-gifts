@@ -8,7 +8,6 @@ interface AuthContextType {
   user: AuthUser | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -22,55 +21,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // No login required — auto-set a default manager user
+    // Restore session from sessionStorage on page load
     const sessionData = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null
     if (sessionData) {
       try {
         setUser(JSON.parse(sessionData))
       } catch (e) {
-        console.error('Failed to parse session user:', e)
+        sessionStorage.removeItem('user')
       }
-    } else {
-      // Default user — always logged in as manager
-      const defaultUser: AuthUser = {
-        id: 'default',
-        email: 'manager@englishcenter.com',
-        role: 'manager',
-        full_name: 'Manager',
-      }
-      setUser(defaultUser)
     }
     setLoading(false)
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    // Demo mode - accept any credentials
-    const demoUser: AuthUser = {
-      id: Date.now().toString(),
-      email,
-      role: email.includes('manager') ? 'manager' : 'sales',
-      full_name: email.split('@')[0],
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || 'Email hoặc mật khẩu không đúng')
     }
-
+    const authedUser: AuthUser = await res.json()
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('user', JSON.stringify(demoUser))
+      sessionStorage.setItem('user', JSON.stringify(authedUser))
     }
-    setUser(demoUser)
-  }
-
-  const signUp = async (email: string, password: string, fullName: string) => {
-    // Demo mode - accept any credentials
-    const demoUser: AuthUser = {
-      id: Date.now().toString(),
-      email,
-      role: 'sales',
-      full_name: fullName,
-    }
-
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('user', JSON.stringify(demoUser))
-    }
-    setUser(demoUser)
+    setUser(authedUser)
   }
 
   const signOut = async () => {
@@ -88,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         user,
         loading,
         signIn,
-        signUp,
         signOut,
       }}
     >

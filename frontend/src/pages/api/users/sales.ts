@@ -15,13 +15,13 @@ export default async function handler(
 
     let query = supabase
       .from('users')
-      .select('id, full_name, email')
+      .select('id, full_name')
       .eq('role', 'sales')
       .eq('is_active', true)
       .order('full_name')
 
     if (search && typeof search === 'string') {
-      query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
+      query = query.ilike('full_name', `%${search}%`)
     }
 
     const { data, error } = await query

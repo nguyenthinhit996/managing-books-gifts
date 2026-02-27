@@ -17,7 +17,7 @@ export default async function handler(
     try {
       const { data: user, error } = await supabase
         .from('users')
-        .select('id, full_name, email, role, is_active, created_at')
+        .select('id, full_name, role, is_active, created_at')
         .eq('id', id)
         .single()
 
@@ -45,11 +45,10 @@ export default async function handler(
   // PUT: Update user
   if (req.method === 'PUT') {
     try {
-      const { full_name, email, is_active } = req.body
+      const { full_name, is_active } = req.body
 
       const updateData: any = { updated_at: new Date() }
       if (full_name !== undefined) updateData.full_name = full_name
-      if (email !== undefined) updateData.email = email
       if (is_active !== undefined) updateData.is_active = is_active
 
       const { data, error } = await supabase
@@ -59,9 +58,6 @@ export default async function handler(
         .select()
 
       if (error) {
-        if (error.message.includes('unique') || error.message.includes('duplicate')) {
-          return apiError(res, 'Email already exists', 400)
-        }
         return apiError(res, error.message, 500)
       }
 
