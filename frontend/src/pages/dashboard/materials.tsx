@@ -349,7 +349,7 @@ export default function MaterialsPage() {
                   <Label>Số lượng *</Label>
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     required
                     value={formData.quantity_total}
                     onChange={(e) => setFormData({ ...formData, quantity_total: e.target.value })}

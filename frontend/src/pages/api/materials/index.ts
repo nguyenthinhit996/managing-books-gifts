@@ -61,8 +61,8 @@ export default async function handler(
             author,
             level,
             type,
-            quantity_total: quantity_total || 1,
-            quantity_available: quantity_total || 1,
+            quantity_total: quantity_total ?? 0,
+            quantity_available: quantity_total ?? 0,
           },
         ])
         .select()
