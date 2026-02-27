@@ -68,7 +68,6 @@ export default function SalesPage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) { router.push('/login'); return }
     try {
       if (editingId) {
         await axios.put(`/api/users/${editingId}`, formData)
@@ -90,7 +89,6 @@ export default function SalesPage() {
   // Handle toggle active/inactive
   const handleToggle = async () => {
     if (!toggleId) return
-    if (!user) { router.push('/login'); return }
 
     try {
       await axios.put(`/api/users/${toggleId}`, { is_active: toggleActive })
@@ -104,7 +102,6 @@ export default function SalesPage() {
 
   // Handle edit
   const handleEdit = (s: SalesStaff) => {
-    if (!user) { router.push('/login'); return }
     setFormData({
       full_name: s.full_name,
       email: s.email,
@@ -217,7 +214,6 @@ export default function SalesPage() {
                             variant={s.is_active ? 'destructive' : 'default'}
                             size="sm"
                             onClick={() => {
-                              if (!user) { router.push('/login'); return }
                               setToggleId(s.id)
                               setToggleActive(!s.is_active)
                             }}

@@ -74,7 +74,6 @@ export default function StudentsPage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) { router.push('/login'); return }
     try {
       if (editingId) {
         await axios.put(`/api/students/${editingId}`, formData)
@@ -109,7 +108,6 @@ export default function StudentsPage() {
 
   // Handle edit
   const handleEdit = (student: Student) => {
-    if (!user) { router.push('/login'); return }
     setFormData({
       name: student.name,
       email: student.email,
@@ -145,7 +143,6 @@ export default function StudentsPage() {
             </div>
               <Button
                 onClick={() => {
-                  if (!user) { router.push('/login'); return }
                   setEditingId(null)
                   setFormData({ name: '', email: '', phone: '', level: 'ielts', student_type: 'new' })
                   setShowDialog(true)

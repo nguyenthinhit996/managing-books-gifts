@@ -22,7 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already logged in (demo mode)
+    // No login required — auto-set a default manager user
     const sessionData = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null
     if (sessionData) {
       try {
@@ -30,6 +30,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (e) {
         console.error('Failed to parse session user:', e)
       }
+    } else {
+      // Default user — always logged in as manager
+      const defaultUser: AuthUser = {
+        id: 'default',
+        email: 'manager@englishcenter.com',
+        role: 'manager',
+        full_name: 'Manager',
+      }
+      setUser(defaultUser)
     }
     setLoading(false)
   }, [])
