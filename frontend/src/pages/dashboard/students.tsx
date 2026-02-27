@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import DashboardLayout from '@/components/DashboardLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { Card } from '@/components/ui/card'
@@ -21,12 +22,13 @@ interface Student {
   phone?: string
   level: string
   student_type: string
-  lending_records?: any[]
+  material_records?: any[]
   created_at: string
 }
 
 export default function StudentsPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -41,7 +43,7 @@ export default function StudentsPage() {
     name: '',
     email: '',
     phone: '',
-    level: 'beginner',
+    level: 'ielts',
     student_type: 'new',
   })
 
@@ -72,7 +74,7 @@ export default function StudentsPage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+    if (!user) { router.push('/login'); return }
     try {
       if (editingId) {
         await axios.put(`/api/students/${editingId}`, formData)
@@ -83,7 +85,7 @@ export default function StudentsPage() {
       }
 
       setShowDialog(false)
-      setFormData({ name: '', email: '', phone: '', level: 'beginner', student_type: 'new' })
+      setFormData({ name: '', email: '', phone: '', level: 'ielts', student_type: 'new' })
       setEditingId(null)
       fetchStudents()
     } catch (err: any) {
@@ -96,9 +98,9 @@ export default function StudentsPage() {
     if (!deleteId) return
 
     try {
-      // Note: Students can't be deleted from students/[id].ts, only updated
+      // Note: Students can't be deleted, only updated
       // This is intentional to preserve history
-      toast.error('Students cannot be deleted to preserve lending history')
+      toast.error('Students cannot be deleted to preserve material records history')
       setDeleteId(null)
     } catch (err: any) {
       toast.error('Failed to delete student')
@@ -107,6 +109,7 @@ export default function StudentsPage() {
 
   // Handle edit
   const handleEdit = (student: Student) => {
+    if (!user) { router.push('/login'); return }
     setFormData({
       name: student.name,
       email: student.email,
@@ -118,7 +121,7 @@ export default function StudentsPage() {
     setShowDialog(true)
   }
 
-  // View lending history
+  // View material history
   const viewHistory = async (student: Student) => {
     try {
       const response = await axios.get(`/api/students/${student.id}`)
@@ -132,27 +135,25 @@ export default function StudentsPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
+    <DashboardLayout>
         <div className="p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Students Management</h1>
-              <p className="text-gray-600 mt-2">Manage students and their book borrowing records</p>
+              <p className="text-gray-600 mt-2">Manage students and their material records</p>
             </div>
-            {user?.role === 'manager' && (
               <Button
                 onClick={() => {
+                  if (!user) { router.push('/login'); return }
                   setEditingId(null)
-                  setFormData({ name: '', email: '', phone: '', level: 'beginner', student_type: 'new' })
+                  setFormData({ name: '', email: '', phone: '', level: 'ielts', student_type: 'new' })
                   setShowDialog(true)
                 }}
               >
                 <Plus size={18} className="mr-2" />
                 Add Student
               </Button>
-            )}
           </div>
 
           {/* Filters */}
@@ -172,9 +173,11 @@ export default function StudentsPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Levels</option>
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
+              <option value="ielts">IELTS</option>
+              <option value="toeic">TOEIC</option>
+              <option value="giao-tiep">Giao tiếp</option>
+              <option value="junior">Junior</option>
+              <option value="sat">SAT</option>
             </select>
             <select
               value={studentType}
@@ -237,25 +240,21 @@ export default function StudentsPage() {
                           >
                             <BookOpen size={16} />
                           </Button>
-                          {user?.role === 'manager' && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEdit(student)}
-                              >
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setDeleteId(student.id)}
-                                disabled
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(student)}
+                          >
+                            <Edit2 size={16} />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setDeleteId(student.id)}
+                            disabled
+                          >
+                            <Trash2 size={16} />
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -308,9 +307,11 @@ export default function StudentsPage() {
                     onChange={(e) => setFormData({ ...formData, level: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
+                    <option value="ielts">IELTS</option>
+                    <option value="toeic">TOEIC</option>
+                    <option value="giao-tiep">Giao tiếp</option>
+                    <option value="junior">Junior</option>
+                    <option value="sat">SAT</option>
                   </select>
                 </div>
                 <div>
@@ -342,17 +343,17 @@ export default function StudentsPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Lending History Modal */}
+          {/* Material History Modal */}
           <Dialog open={showHistory} onOpenChange={setShowHistory}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Lending History - {selectedStudent?.name}</DialogTitle>
+                <DialogTitle>Material History - {selectedStudent?.name}</DialogTitle>
               </DialogHeader>
-              {selectedStudent?.lending_records && selectedStudent.lending_records.length > 0 ? (
+              {selectedStudent?.material_records && selectedStudent.material_records.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {selectedStudent.lending_records.map((record: any) => (
+                  {selectedStudent.material_records.map((record: any) => (
                     <div key={record.id} className="p-3 border border-gray-200 rounded">
-                      <p className="font-medium text-gray-900">{record.books?.title}</p>
+                      <p className="font-medium text-gray-900">{record.materials?.title}</p>
                       <p className="text-sm text-gray-600">
                         Issued: {new Date(record.issued_date).toLocaleDateString()}
                       </p>
@@ -374,7 +375,7 @@ export default function StudentsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-600 py-4">No lending history</p>
+                <p className="text-center text-gray-600 py-4">No material history</p>
               )}
             </DialogContent>
           </Dialog>
@@ -385,7 +386,7 @@ export default function StudentsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Student</AlertDialogTitle>
               </AlertDialogHeader>
-              <p className="text-gray-600">Students cannot be deleted to preserve lending history.</p>
+              <p className="text-gray-600">Students cannot be deleted to preserve material records history.</p>
               <AlertDialogFooter>
                 <Button onClick={() => setDeleteId(null)}>OK</Button>
               </AlertDialogFooter>
@@ -393,6 +394,5 @@ export default function StudentsPage() {
           </AlertDialog>
         </div>
       </DashboardLayout>
-    </ProtectedRoute>
   )
 }

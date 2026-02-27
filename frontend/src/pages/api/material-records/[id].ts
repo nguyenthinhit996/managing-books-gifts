@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/utils/supabase-server'
 import { apiResponse, apiError } from '@/utils/api-helpers'
 
 export default async function handler(
@@ -9,10 +9,10 @@ export default async function handler(
   const { id } = req.query
 
   if (!id) {
-    return apiError(res, 'Lending record ID is required', 400)
+    return apiError(res, 'Material record ID is required', 400)
   }
 
-  // PUT: Update lending record status (return/lost/damaged)
+  // PUT: Update material record status (return/lost/damaged)
   if (req.method === 'PUT') {
     try {
       const { status, return_date } = req.body
@@ -21,9 +21,9 @@ export default async function handler(
         return apiError(res, 'Invalid status', 400)
       }
 
-      // Get current lending record
+      // Get current record
       const { data: currentRecord, error: fetchError } = await supabase
-        .from('lending_records')
+        .from('material_records')
         .select('*')
         .eq('id', id)
         .single()
@@ -32,13 +32,12 @@ export default async function handler(
         return apiError(res, fetchError.message, 404)
       }
 
-      // Update lending record
+      // Update record
       const { data, error } = await supabase
-        .from('lending_records')
+        .from('material_records')
         .update({
           status,
           return_date: return_date || new Date().toISOString().split('T')[0],
-          updated_at: new Date(),
         })
         .eq('id', id)
         .select()
@@ -47,21 +46,21 @@ export default async function handler(
         return apiError(res, error.message, 500)
       }
 
-      // If returning, increment book availability
+      // If returning, increment material availability
       if (status === 'returned' && currentRecord.status === 'borrowed') {
-        const { data: book } = await supabase
-          .from('books')
+        const { data: material } = await supabase
+          .from('materials')
           .select('quantity_available')
-          .eq('id', currentRecord.book_id)
+          .eq('id', currentRecord.material_id)
           .single()
 
-        if (book) {
+        if (material) {
           await supabase
-            .from('books')
+            .from('materials')
             .update({
-              quantity_available: book.quantity_available + 1,
+              quantity_available: material.quantity_available + 1,
             })
-            .eq('id', currentRecord.book_id)
+            .eq('id', currentRecord.material_id)
         }
       }
 

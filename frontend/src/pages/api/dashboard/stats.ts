@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/utils/supabase-server'
 import { apiResponse, apiError } from '@/utils/api-helpers'
 
 export default async function handler(
@@ -11,49 +11,49 @@ export default async function handler(
   }
 
   try {
-    // Get total books and available
-    const { count: totalBooks, error: booksError } = await supabase
-      .from('books')
+    // Get total materials and available
+    const { count: totalMaterials, error: materialsError } = await supabase
+      .from('materials')
       .select('*', { count: 'exact', head: true })
 
-    if (booksError) {
-      console.error('Books query error:', booksError)
-      return apiError(res, `Database error: ${booksError.message}`, 500)
+    if (materialsError) {
+      console.error('Materials query error:', materialsError)
+      return apiError(res, `Database error: ${materialsError.message}`, 500)
     }
 
-    const { data: availableBooks, error: availableError } = await supabase
-      .from('books')
+    const { data: availableMaterials, error: availableError } = await supabase
+      .from('materials')
       .select('quantity_available')
 
     if (availableError) {
-      console.error('Available books query error:', availableError)
+      console.error('Available materials query error:', availableError)
       return apiError(res, `Database error: ${availableError.message}`, 500)
     }
 
-    const totalAvailable = availableBooks?.reduce(
-      (sum, b) => sum + (b.quantity_available || 0),
+    const totalAvailable = availableMaterials?.reduce(
+      (sum, m) => sum + (m.quantity_available || 0),
       0
     ) || 0
 
-    // Get borrowed books count
+    // Get borrowed count
     const { count: borrowedCount, error: borrowedError } = await supabase
-      .from('lending_records')
+      .from('material_records')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'borrowed')
 
     if (borrowedError) {
-      console.error('Borrowed books query error:', borrowedError)
+      console.error('Borrowed materials query error:', borrowedError)
       return apiError(res, `Database error: ${borrowedError.message}`, 500)
     }
 
-    // Get overdue books count (simplified - would need better date logic)
+    // Get overdue count
     const { count: overdueCount, error: overdueError } = await supabase
-      .from('lending_records')
+      .from('material_records')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'overdue')
 
     if (overdueError) {
-      console.error('Overdue books query error:', overdueError)
+      console.error('Overdue materials query error:', overdueError)
       return apiError(res, `Database error: ${overdueError.message}`, 500)
     }
 
@@ -67,17 +67,17 @@ export default async function handler(
       return apiError(res, `Database error: ${studentsError.message}`, 500)
     }
 
-    // Recent lending records
+    // Recent material records
     const { data: recentRecords, error: recentError } = await supabase
-      .from('lending_records')
+      .from('material_records')
       .select(
         `
         *,
-        books(title),
-        students(name)
+        materials(title),
+        enrollments(issued_date, students(name))
       `
       )
-      .order('issued_date', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(5)
 
     if (recentError) {
@@ -87,10 +87,10 @@ export default async function handler(
 
     return apiResponse(res, true, {
       stats: {
-        totalBooks: totalBooks || 0,
-        availableBooks: totalAvailable,
-        borrowedBooks: borrowedCount || 0,
-        overdueBooks: overdueCount || 0,
+        totalMaterials: totalMaterials || 0,
+        availableMaterials: totalAvailable,
+        borrowedMaterials: borrowedCount || 0,
+        overdueMaterials: overdueCount || 0,
         totalStudents: totalStudents || 0,
       },
       recentRecords,

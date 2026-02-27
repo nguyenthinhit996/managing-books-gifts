@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/utils/supabase-server'
 import { apiResponse, apiError } from '@/utils/api-helpers'
 
 export default async function handler(
@@ -9,14 +9,14 @@ export default async function handler(
   const { id } = req.query
 
   if (!id) {
-    return apiError(res, 'Book ID is required', 400)
+    return apiError(res, 'Material ID is required', 400)
   }
 
-  // GET: Fetch single book
+  // GET: Fetch single material
   if (req.method === 'GET') {
     try {
       const { data, error } = await supabase
-        .from('books')
+        .from('materials')
         .select('*')
         .eq('id', id)
         .single()
@@ -31,13 +31,13 @@ export default async function handler(
     }
   }
 
-  // PUT: Update book
+  // PUT: Update material
   if (req.method === 'PUT') {
     try {
-      const { title, author, level, quantity_total, quantity_available, condition } = req.body
+      const { title, author, level, quantity_total, quantity_available, condition, type } = req.body
 
       const { data, error } = await supabase
-        .from('books')
+        .from('materials')
         .update({
           title,
           author,
@@ -45,6 +45,7 @@ export default async function handler(
           quantity_total,
           quantity_available,
           condition,
+          type,
           updated_at: new Date(),
         })
         .eq('id', id)
@@ -60,11 +61,11 @@ export default async function handler(
     }
   }
 
-  // DELETE: Delete book
+  // DELETE: Delete material
   if (req.method === 'DELETE') {
     try {
       const { error } = await supabase
-        .from('books')
+        .from('materials')
         .delete()
         .eq('id', id)
 

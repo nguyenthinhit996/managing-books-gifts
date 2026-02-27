@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/utils/supabase-server'
 import { apiResponse, apiError } from '@/utils/api-helpers'
 
 export default async function handler(
@@ -20,14 +20,14 @@ export default async function handler(
         .select(
           `
           *,
-          lending_records:lending_records(
+          material_records(
             id,
-            book_id,
+            material_id,
             issued_date,
             due_date,
             return_date,
             status,
-            books(title, author, level)
+            materials(title, author, level)
           )
         `
         )

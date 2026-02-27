@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import DashboardLayout from '@/components/DashboardLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { Card } from '@/components/ui/card'
@@ -21,11 +22,12 @@ interface SalesStaff {
   role: string
   is_active: boolean
   created_at: string
-  lending_records?: any[]
+  material_records?: any[]
 }
 
 export default function SalesPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [staff, setStaff] = useState<SalesStaff[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -66,7 +68,7 @@ export default function SalesPage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+    if (!user) { router.push('/login'); return }
     try {
       if (editingId) {
         await axios.put(`/api/users/${editingId}`, formData)
@@ -88,6 +90,7 @@ export default function SalesPage() {
   // Handle toggle active/inactive
   const handleToggle = async () => {
     if (!toggleId) return
+    if (!user) { router.push('/login'); return }
 
     try {
       await axios.put(`/api/users/${toggleId}`, { is_active: toggleActive })
@@ -101,6 +104,7 @@ export default function SalesPage() {
 
   // Handle edit
   const handleEdit = (s: SalesStaff) => {
+    if (!user) { router.push('/login'); return }
     setFormData({
       full_name: s.full_name,
       email: s.email,
@@ -123,18 +127,17 @@ export default function SalesPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
+    <DashboardLayout>
         <div className="p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Sales Staff</h1>
-              <p className="text-gray-600 mt-2">Manage sales staff who handle book borrowing and returning</p>
+              <p className="text-gray-600 mt-2">Manage sales staff who handle material borrowing and returning</p>
             </div>
-            {user?.role === 'manager' && (
               <Button
                 onClick={() => {
+                  if (!user) { router.push('/login'); return }
                   setEditingId(null)
                   setFormData({ full_name: '', email: '' })
                   setShowDialog(true)
@@ -143,7 +146,6 @@ export default function SalesPage() {
                 <Plus size={18} className="mr-2" />
                 Add Staff
               </Button>
-            )}
           </div>
 
           {/* Search */}
@@ -204,27 +206,24 @@ export default function SalesPage() {
                           >
                             <BookOpen size={16} />
                           </Button>
-                          {user?.role === 'manager' && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEdit(s)}
-                              >
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button
-                                variant={s.is_active ? 'destructive' : 'default'}
-                                size="sm"
-                                onClick={() => {
-                                  setToggleId(s.id)
-                                  setToggleActive(!s.is_active)
-                                }}
-                              >
-                                {s.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(s)}
+                          >
+                            <Edit2 size={16} />
+                          </Button>
+                          <Button
+                            variant={s.is_active ? 'destructive' : 'default'}
+                            size="sm"
+                            onClick={() => {
+                              if (!user) { router.push('/login'); return }
+                              setToggleId(s.id)
+                              setToggleActive(!s.is_active)
+                            }}
+                          >
+                            {s.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -277,17 +276,17 @@ export default function SalesPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Lending History Modal */}
+          {/* Material Records History Modal */}
           <Dialog open={showHistory} onOpenChange={setShowHistory}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Lending History - {selectedStaff?.full_name}</DialogTitle>
+                <DialogTitle>Material Records - {selectedStaff?.full_name}</DialogTitle>
               </DialogHeader>
-              {selectedStaff?.lending_records && selectedStaff.lending_records.length > 0 ? (
+              {selectedStaff?.material_records && selectedStaff.material_records.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {selectedStaff.lending_records.map((record: any) => (
+                  {selectedStaff.material_records.map((record: any) => (
                     <div key={record.id} className="p-3 border border-gray-200 rounded">
-                      <p className="font-medium text-gray-900">{record.books?.title}</p>
+                      <p className="font-medium text-gray-900">{record.materials?.title}</p>
                       <p className="text-sm text-gray-600">
                         Issued: {new Date(record.issued_date).toLocaleDateString()}
                       </p>
@@ -304,7 +303,7 @@ export default function SalesPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-600 py-4">No lending history</p>
+                <p className="text-center text-gray-600 py-4">No material records</p>
               )}
             </DialogContent>
           </Dialog>
@@ -319,7 +318,7 @@ export default function SalesPage() {
               </AlertDialogHeader>
               <p className="text-gray-600">
                 {toggleActive
-                  ? 'This staff member will be able to handle book transactions again.'
+                  ? 'This staff member will be able to handle material transactions again.'
                   : 'This staff member will no longer appear in the enrollment form.'}
               </p>
               <AlertDialogFooter>
@@ -337,6 +336,5 @@ export default function SalesPage() {
           </AlertDialog>
         </div>
       </DashboardLayout>
-    </ProtectedRoute>
   )
 }

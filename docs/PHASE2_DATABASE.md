@@ -37,12 +37,11 @@ CREATE TYPE user_role AS ENUM ('manager', 'sales', 'admin');
 
 -- Book level enum
 CREATE TYPE book_level AS ENUM (
-  'beginner',
-  'elementary',
-  'pre-intermediate',
-  'intermediate',
-  'upper-intermediate',
-  'advanced'
+  'ielts',
+  'toeic',
+  'giao-tiep',
+  'junior',
+  'sat'
 );
 
 -- Student type enum

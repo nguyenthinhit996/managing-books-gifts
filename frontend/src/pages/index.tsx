@@ -9,7 +9,7 @@ const Home: NextPage = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard')
+      router.push('/dashboard/materials?type=book')
     }
   }, [user, loading, router])
 

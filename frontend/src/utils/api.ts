@@ -2,7 +2,8 @@ import axios from 'axios'
 import { supabase } from './supabase'
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+  // Empty string = relative URL, works on both localhost and Vercel
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '',
 })
 
 // Add auth token to requests

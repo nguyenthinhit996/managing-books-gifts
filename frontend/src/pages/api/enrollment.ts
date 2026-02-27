@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/utils/supabase-server'
 import { apiResponse, apiError } from '@/utils/api-helpers'
 
 export default async function handler(
@@ -17,14 +17,17 @@ export default async function handler(
       email,
       phone,
       level,
-      purpose,
       sales_staff_id,
-      book_id,
+      material_id,
+      material_ids,
       notes,
     } = req.body
 
+    // Support both single material_id and array material_ids
+    const ids: string[] = material_ids || (material_id ? [material_id] : [])
+
     // Validate required fields
-    if (!type || !phone || !book_id) {
+    if (!type || !phone || ids.length === 0) {
       return apiError(res, 'Missing required fields', 400)
     }
 
@@ -53,8 +56,7 @@ export default async function handler(
               email,
               phone,
               level,
-              student_type: purpose,
-              notes,
+              student_type: 'new',
             },
           ])
           .select()
@@ -69,137 +71,147 @@ export default async function handler(
 
         student_phone = newStudent?.[0]?.phone || phone
       } else {
-        // Update existing student if details changed
-        await supabase
-          .from('students')
-          .update({
-            name: student_name,
-            email,
-            level,
-            student_type: purpose,
-            notes,
-            updated_at: new Date(),
-          })
-          .eq('phone', phone)
+        // Update existing student — only overwrite fields that are actually provided
+        const updates: Record<string, string> = {}
+        if (student_name) updates.name = student_name
+        if (email) updates.email = email
+        if (level) updates.level = level
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('students').update(updates).eq('phone', phone)
+        }
       }
 
-      // Check book availability
-      const { data: book, error: bookError } = await supabase
-        .from('books')
-        .select('id, quantity_available')
-        .eq('id', book_id)
+      // Check all materials availability
+      const { data: materialsData, error: materialsError } = await supabase
+        .from('materials')
+        .select('id, title, quantity_available')
+        .in('id', ids)
+
+      if (materialsError || !materialsData || materialsData.length === 0) {
+        return apiError(res, 'One or more materials not found', 404)
+      }
+
+      // Check each material has availability
+      const unavailable = materialsData.filter((m) => m.quantity_available <= 0)
+      if (unavailable.length > 0) {
+        const titles = unavailable.map((m) => m.title).join(', ')
+        return apiError(res, `Not available: ${titles}`, 400)
+      }
+
+      // Create enrollment (parent record)
+      const due_date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const { data: enrollment, error: enrollmentError } = await supabase
+        .from('enrollments')
+        .insert([{
+          student_phone,
+          sales_staff_id,
+          issued_date: new Date().toISOString().split('T')[0],
+          due_date,
+          notes,
+        }])
+        .select()
         .single()
 
-      if (bookError || !book) {
-        return apiError(res, 'Book not found or unavailable', 404)
+      if (enrollmentError || !enrollment) {
+        return apiError(res, enrollmentError?.message || 'Failed to create enrollment', 500)
       }
 
-      if (book.quantity_available <= 0) {
-        return apiError(res, 'Book is not available', 400)
-      }
+      // Create material_records linked to enrollment
+      const records = ids.map((mid) => ({
+        enrollment_id: enrollment.id,
+        material_id: mid,
+        status: 'borrowed',
+      }))
 
-      // Create lending record using phone
-      const { data: lendingRecord, error: lendingError } = await supabase
-        .from('lending_records')
-        .insert([
-          {
-            book_id,
-            student_phone,
-            sales_staff_id,
-            issued_date: new Date().toISOString().split('T')[0],
-            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-              .toISOString()
-              .split('T')[0],
-            status: 'borrowed',
-            notes: notes || `Purpose: ${purpose}`,
-          },
-        ])
+      const { data: materialRecords, error: recordError } = await supabase
+        .from('material_records')
+        .insert(records)
         .select()
 
-      if (lendingError) {
-        console.error('Lending record creation error:', lendingError)
-        return apiError(res, lendingError.message, 500)
+      if (recordError) {
+        console.error('Material record creation error:', recordError)
+        return apiError(res, recordError.message, 500)
       }
 
-      // Decrement book availability
-      await supabase
-        .from('books')
-        .update({
-          quantity_available: Math.max(0, book.quantity_available - 1),
-        })
-        .eq('id', book_id)
+      // Decrement availability atomically via RPC to prevent race conditions
+      for (const mat of materialsData) {
+        await supabase.rpc('decrement_material_quantity', { p_material_id: mat.id })
+      }
 
+      const count = ids.length
       return apiResponse(
         res,
         true,
         {
-          student_phone: student_phone,
-          lending_record_id: lendingRecord?.[0]?.id,
-          message: existingStudent
-            ? 'Book borrowed successfully!'
-            : 'Student enrolled and book borrowed!',
+          enrollment_id: enrollment.id,
+          student_phone,
+          material_record_ids: materialRecords?.map((r) => r.id) || [],
+          message: 'Done! Books & gifts assigned.',
         },
         undefined,
         201
       )
     } else if (type === 'return') {
-      // RETURN LOGIC
-      // Find the lending record by phone and book_id with status 'borrowed'
-      const { data: lendingRecord, error: findError } = await supabase
-        .from('lending_records')
-        .select('*')
+      // RETURN LOGIC - still single material
+      const returnId = ids[0]
+
+      // Find enrollments for this student phone
+      const { data: studentEnrollments } = await supabase
+        .from('enrollments')
+        .select('id')
         .eq('student_phone', phone)
-        .eq('book_id', book_id)
+
+      if (!studentEnrollments || studentEnrollments.length === 0) {
+        return apiError(res, 'No enrollment found for this phone', 404)
+      }
+
+      const enrollmentIds = studentEnrollments.map((e: any) => e.id)
+
+      // Find the active material record
+      const { data: materialRecord, error: findError } = await supabase
+        .from('material_records')
+        .select('*')
+        .in('enrollment_id', enrollmentIds)
+        .eq('material_id', returnId)
         .eq('status', 'borrowed')
         .single()
 
-      if (findError) {
-        console.error('Find lending record error:', findError)
-        return apiError(res, 'No active borrowing found for this book and phone', 404)
+      if (findError || !materialRecord) {
+        return apiError(res, 'No active borrowing found for this material and phone', 404)
       }
 
-      if (!lendingRecord) {
-        return apiError(res, 'No active borrowing found for this book and phone', 404)
-      }
-
-      // Update lending record status to returned
+      // Update material record status to returned
       const { error: updateError } = await supabase
-        .from('lending_records')
+        .from('material_records')
         .update({
           status: 'returned',
           return_date: new Date().toISOString().split('T')[0],
-          notes: notes || lendingRecord.notes,
-          updated_at: new Date(),
         })
-        .eq('id', lendingRecord.id)
+        .eq('id', materialRecord.id)
 
       if (updateError) {
-        console.error('Update lending error:', updateError)
         return apiError(res, updateError.message, 500)
       }
 
-      // Increment book availability
-      const { data: book, error: bookError } = await supabase
-        .from('books')
+      // Increment material availability
+      const { data: material, error: materialError } = await supabase
+        .from('materials')
         .select('quantity_available')
-        .eq('id', book_id)
+        .eq('id', returnId)
         .single()
 
-      if (book) {
-        await supabase
-          .from('books')
-          .update({
-            quantity_available: book.quantity_available + 1,
-          })
-          .eq('id', book_id)
+      if (material) {
+        // Increment availability atomically via RPC to prevent race conditions
+        await supabase.rpc('increment_material_quantity', { p_material_id: returnId })
       }
 
       return apiResponse(
         res,
         true,
         {
-          lending_record_id: lendingRecord.id,
-          message: 'Book returned successfully!',
+          material_record_id: materialRecord.id,
+          message: 'Material returned successfully!',
         },
         undefined,
         200

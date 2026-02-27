@@ -8,22 +8,27 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
 import axios from 'axios'
 import Link from 'next/link'
-import { BookOpen, Users, TrendingUp, AlertCircle } from 'lucide-react'
+import { BookOpen, Users, TrendingUp, AlertCircle, Gift, ClipboardList, RefreshCw } from 'lucide-react'
 
 interface Stats {
-  totalBooks: number
-  availableBooks: number
-  borrowedBooks: number
-  overdueBooks: number
+  totalMaterials: number
+  availableMaterials: number
+  borrowedMaterials: number
+  overdueMaterials: number
   totalStudents: number
 }
 
 interface RecentRecord {
   id: string
-  books?: { title: string }
-  students?: { name: string }
-  issued_date: string
+  materials?: { title: string }
+  enrollments?: { issued_date: string; students?: { name: string } }
   status: string
+}
+
+const statusMap: Record<string, { label: string; className: string }> = {
+  borrowed: { label: 'Đang mượn', className: 'bg-yellow-100 text-yellow-700' },
+  returned: { label: 'Đã trả', className: 'bg-green-100 text-green-700' },
+  overdue: { label: 'Quá hạn', className: 'bg-red-100 text-red-700' },
 }
 
 export default function Dashboard() {
@@ -33,33 +38,40 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true)
-        const response = await axios.get('/api/dashboard/stats')
-        if (response.data.success) {
-          setStats(response.data.data.stats)
-          setRecent(response.data.data.recentRecords || [])
-        }
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load dashboard')
-      } finally {
-        setLoading(false)
+  const fetchStats = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await axios.get('/api/dashboard/stats')
+      if (response.data.success) {
+        setStats(response.data.data.stats)
+        setRecent(response.data.data.recentRecords || [])
       }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Không thể tải dữ liệu')
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchStats()
-  }, []) // Empty dependency array - runs once on mount
+  }, [])
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <div className="p-8">
+    <DashboardLayout>
+        <div className="p-8 max-w-6xl mx-auto">
+
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-2">Welcome back, {user?.email}</p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">📊 Tổng quan</h1>
+              <p className="text-gray-500 mt-1">Xin chào, <span className="font-medium text-gray-700">{user?.full_name || user?.email}</span> 👋</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchStats} disabled={loading} className="flex items-center gap-2">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              Làm mới
+            </Button>
           </div>
 
           {/* Error State */}
@@ -74,128 +86,147 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Card key={i} className="p-6 animate-pulse">
-                  <div className="h-12 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-8 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-10 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-100 rounded w-3/4"></div>
                 </Card>
               ))}
             </div>
           ) : stats ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-              {/* Total Books */}
-              <Card className="p-6 border-l-4 border-l-blue-500">
-                <div className="flex items-center justify-between">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+              <Card className="p-5 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Total Books</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalBooks}</p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Tổng tài liệu</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalMaterials}</p>
+                    <p className="text-xs text-gray-400 mt-1">Sách + Quà tặng</p>
                   </div>
-                  <BookOpen className="text-blue-500 opacity-20" size={40} />
+                  <BookOpen className="text-blue-400 mt-1 shrink-0" size={28} />
                 </div>
               </Card>
 
-              {/* Available Books */}
-              <Card className="p-6 border-l-4 border-l-green-500">
-                <div className="flex items-center justify-between">
+              <Card className="p-5 border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Available</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.availableBooks}</p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Còn sẵn</p>
+                    <p className="text-3xl font-bold text-green-600 mt-1">{stats.availableMaterials}</p>
+                    <p className="text-xs text-gray-400 mt-1">Có thể cho mượn</p>
                   </div>
-                  <TrendingUp className="text-green-500 opacity-20" size={40} />
+                  <Gift className="text-green-400 mt-1 shrink-0" size={28} />
                 </div>
               </Card>
 
-              {/* Borrowed Books */}
-              <Card className="p-6 border-l-4 border-l-yellow-500">
-                <div className="flex items-center justify-between">
+              <Card className="p-5 border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Borrowed</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.borrowedBooks}</p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Đang mượn</p>
+                    <p className="text-3xl font-bold text-yellow-600 mt-1">{stats.borrowedMaterials}</p>
+                    <p className="text-xs text-gray-400 mt-1">Học viên đang giữ</p>
                   </div>
-                  <BookOpen className="text-yellow-500 opacity-20" size={40} />
+                  <ClipboardList className="text-yellow-400 mt-1 shrink-0" size={28} />
                 </div>
               </Card>
 
-              {/* Overdue Books */}
-              <Card className="p-6 border-l-4 border-l-red-500">
-                <div className="flex items-center justify-between">
+              <Card className="p-5 border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Overdue</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.overdueBooks}</p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Quá hạn</p>
+                    <p className="text-3xl font-bold text-red-600 mt-1">{stats.overdueMaterials}</p>
+                    <p className="text-xs text-gray-400 mt-1">Chưa trả đúng hạn</p>
                   </div>
-                  <AlertCircle className="text-red-500 opacity-20" size={40} />
+                  <AlertCircle className="text-red-400 mt-1 shrink-0" size={28} />
                 </div>
               </Card>
 
-              {/* Total Students */}
-              <Card className="p-6 border-l-4 border-l-purple-500">
-                <div className="flex items-center justify-between">
+              <Card className="p-5 border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">Students</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalStudents}</p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Học viên</p>
+                    <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalStudents}</p>
+                    <p className="text-xs text-gray-400 mt-1">Đã đăng ký</p>
                   </div>
-                  <Users className="text-purple-500 opacity-20" size={40} />
+                  <Users className="text-purple-400 mt-1 shrink-0" size={28} />
                 </div>
               </Card>
             </div>
           ) : null}
 
           {/* Quick Actions */}
-          {user?.role === 'manager' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <Link href="/dashboard/books">
-                <Button className="w-full justify-start">
-                  <BookOpen size={18} className="mr-2" />
-                  Manage Books
-                </Button>
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">⚡ Truy cập nhanh</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Link href="/dashboard/materials?type=book">
+                <Card className="p-4 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer border hover:border-blue-300">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <BookOpen size={20} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Quản lý Sách</p>
+                    <p className="text-xs text-gray-500">Xem & cập nhật kho sách</p>
+                  </div>
+                </Card>
               </Link>
-              <Link href="/dashboard/students">
-                <Button className="w-full justify-start" variant="outline">
-                  <Users size={18} className="mr-2" />
-                  Manage Students
-                </Button>
+              <Link href="/dashboard/materials?type=gift">
+                <Card className="p-4 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer border hover:border-pink-300">
+                  <div className="bg-pink-100 p-2 rounded-lg">
+                    <Gift size={20} className="text-pink-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Quản lý Quà tặng</p>
+                    <p className="text-xs text-gray-500">Xem & cập nhật kho quà</p>
+                  </div>
+                </Card>
               </Link>
-              <Link href="/dashboard/lending">
-                <Button className="w-full justify-start" variant="outline">
-                  <TrendingUp size={18} className="mr-2" />
-                  View Lending
-                </Button>
+              <Link href="/dashboard/material-records">
+                <Card className="p-4 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer border hover:border-yellow-300">
+                  <div className="bg-yellow-100 p-2 rounded-lg">
+                    <TrendingUp size={20} className="text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Lịch sử mượn</p>
+                    <p className="text-xs text-gray-500">Xem các lượt phát tài liệu</p>
+                  </div>
+                </Card>
               </Link>
             </div>
-          )}
+          </div>
 
           {/* Recent Activity */}
           <Card className="p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Lending Activity</h2>
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">🕓 Hoạt động gần đây</h2>
             {recent.length > 0 ? (
-              <div className="space-y-2">
-                {recent.map((record) => (
-                  <div key={record.id} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {record.books?.title || 'Unknown Book'} - {record.students?.name || 'Unknown Student'}
-                      </p>
-                      <p className="text-xs text-gray-600">{new Date(record.issued_date).toLocaleDateString()}</p>
+              <div className="divide-y divide-gray-100">
+                {recent.map((record) => {
+                  const status = statusMap[record.status] ?? { label: record.status, className: 'bg-gray-100 text-gray-600' }
+                  return (
+                    <div key={record.id} className="flex justify-between items-center py-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {record.materials?.title || '—'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Học viên: <span className="font-medium">{record.enrollments?.students?.name || '—'}</span>
+                          {record.enrollments?.issued_date && (
+                            <> · {new Date(record.enrollments.issued_date).toLocaleDateString('vi-VN')}</>
+                          )}
+                        </p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${status.className}`}>
+                        {status.label}
+                      </span>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      record.status === 'borrowed'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : record.status === 'returned'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}>
-                      {record.status}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
-              <p className="text-gray-600 text-sm">No recent activity</p>
+              <p className="text-gray-400 text-sm text-center py-6">Chưa có hoạt động nào</p>
             )}
           </Card>
+
         </div>
       </DashboardLayout>
-    </ProtectedRoute>
   )
 }

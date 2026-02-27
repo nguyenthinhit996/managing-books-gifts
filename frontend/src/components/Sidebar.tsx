@@ -7,27 +7,28 @@ export const Sidebar: React.FC = () => {
   const router = useRouter()
   const { user } = useAuth()
 
-  const isActive = (path: string) => router.pathname === path
+  const isActive = (path: string) => {
+    const [pathname, query] = path.split('?')
+    if (pathname !== router.pathname) return false
+    if (!query) return !router.query.type
+    const params = new URLSearchParams(query)
+    return params.get('type') === router.query.type
+  }
 
   const getMenuItems = () => {
     const commonItems = [
-      { href: '/dashboard', label: '📊 Dashboard', roles: ['manager', 'admin'] },
-      { href: '/dashboard/books', label: '📚 Books', roles: ['manager', 'admin'] },
-      { href: '/dashboard/students', label: '👥 Students', roles: ['manager', 'admin'] },
-      { href: '/dashboard/lending', label: '🔄 Lending Records', roles: ['manager', 'admin'] },
+      { href: '/dashboard', label: '📊 Tổng quan', roles: ['manager', 'admin'], hidden: true },
+      { href: '/dashboard/materials?type=book', label: '📖 Sách', roles: ['manager', 'admin'] },
+      { href: '/dashboard/materials?type=gift', label: '🎁 Quà tặng', roles: ['manager', 'admin'] },
+      { href: '/dashboard/students', label: '👥 Học viên', roles: ['manager', 'admin'], hidden: true },
+      { href: '/dashboard/material-records', label: '🕓 Lịch sử', roles: ['manager', 'admin'] },
     ]
 
-    return commonItems.filter((item) =>
-      item.roles.includes(user?.role || '')
-    )
+    return commonItems.filter((item) => !item.hidden)
   }
 
   return (
     <aside className="w-64 bg-gray-800 text-white min-h-screen p-4">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold">📚 Book Manager</h2>
-      </div>
-
       <nav className="space-y-2">
         {getMenuItems().map((item) => (
           <Link key={item.href} href={item.href}>
@@ -45,14 +46,16 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="mt-8 pt-8 border-t border-gray-700">
-        <p className="text-xs text-gray-400">
-          Logged in as: <strong>{user?.full_name}</strong>
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          Role: <strong>{user?.role}</strong>
-        </p>
-      </div>
+      {user && (
+        <div className="mt-8 pt-8 border-t border-gray-700">
+          <p className="text-xs text-gray-400">
+            Đăng nhập: <strong>{user.full_name}</strong>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Vai trò: <strong>{user.role}</strong>
+          </p>
+        </div>
+      )}
     </aside>
   )
 }

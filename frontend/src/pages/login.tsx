@@ -22,7 +22,7 @@ export const LoginPage = () => {
     try {
       await signIn(email, password)
       toast.success('Logged in successfully!')
-      router.push('/dashboard')
+      router.push('/dashboard/materials?type=book')
     } catch (error: any) {
       toast.error(error.message || 'Failed to login')
     } finally {

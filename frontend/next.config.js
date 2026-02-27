@@ -8,6 +8,12 @@ const nextConfig = {
         hostname: 'localhost',
         port: '3000',
       },
+      {
+        // Supabase Storage images (enrollment photos)
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
   },
 }

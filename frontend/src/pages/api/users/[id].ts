@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/utils/supabase-server'
 import { apiResponse, apiError } from '@/utils/api-helpers'
 
 export default async function handler(
@@ -12,7 +12,7 @@ export default async function handler(
     return apiError(res, 'User ID is required', 400)
   }
 
-  // GET: Fetch single user with lending stats
+  // GET: Fetch single user with material record stats
   if (req.method === 'GET') {
     try {
       const { data: user, error } = await supabase
@@ -25,17 +25,17 @@ export default async function handler(
         return apiError(res, 'User not found', 404)
       }
 
-      // Fetch lending records for this staff
-      const { data: lendingRecords, error: lendingError } = await supabase
-        .from('lending_records')
-        .select('id, book_id, status, issued_date, books(title, author)')
+      // Fetch material records for this staff
+      const { data: materialRecords, error: recordsError } = await supabase
+        .from('material_records')
+        .select('id, material_id, status, issued_date, materials(title, author)')
         .eq('sales_staff_id', id)
         .order('issued_date', { ascending: false })
         .limit(20)
 
       return apiResponse(res, true, {
         ...user,
-        lending_records: lendingRecords || [],
+        material_records: materialRecords || [],
       })
     } catch (error: any) {
       return apiError(res, error.message, 500)
